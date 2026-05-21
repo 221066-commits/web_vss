@@ -6,87 +6,216 @@ export default {
         // Serve the HTML form
         if (path === '/') {
             const html = `<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Record Manager</title>
     <style>
-        body { font-family: Arial; max-width: 600px; margin: 50px auto; padding: 20px; }
-        .container { border: 1px solid #ddd; padding: 20px; margin-bottom: 20px; border-radius: 5px; }
-        input, button { margin: 10px 0; padding: 8px; width: 100%; }
-        .record { border: 1px solid #ddd; padding: 10px; margin: 10px 0; border-radius: 5px; }
-        button { background: #0066ff; color: white; border: none; cursor: pointer; }
-        button:hover { background: #0052cc; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: #555;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #0066ff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        button:hover {
+            background: #0052cc;
+        }
+        .records-list {
+            list-style: none;
+            padding: 0;
+        }
+        .records-list li {
+            background: #f9f9f9;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            border-left: 3px solid #0066ff;
+        }
+        .record-name {
+            font-weight: 600;
+            color: #333;
+        }
+        .record-email {
+            color: #666;
+            font-size: 13px;
+            margin-top: 4px;
+        }
+        .empty {
+            color: #999;
+            text-align: center;
+            padding: 20px;
+        }
+        .error {
+            color: #d32f2f;
+            font-size: 13px;
+            margin-top: 8px;
+        }
+        .success {
+            color: #2e7d32;
+            font-size: 13px;
+            margin-top: 8px;
+        }
+        .loading {
+            text-align: center;
+            color: #666;
+            padding: 20px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>Add New Record</h2>
-        <input type="text" id="name" placeholder="Enter Name">
-        <input type="email" id="email" placeholder="Enter Email">
-        <button onclick="addRecord()">Add Record</button>
-        <div id="message"></div>
+        <div class="form-group">
+            <label>Name:</label>
+            <input type="text" id="nameInput" placeholder="Enter name">
+        </div>
+        <div class="form-group">
+            <label>Email:</label>
+            <input type="email" id="emailInput" placeholder="Enter email">
+        </div>
+        <button id="addBtn">Add Record</button>
+        <div id="addMessage"></div>
     </div>
-    
+
     <div class="container">
         <h2>Stored Records</h2>
-        <div id="records">Loading...</div>
+        <div id="recordsContainer">
+            <div class="loading">Loading records...</div>
+        </div>
     </div>
-    
+
     <script>
         async function loadRecords() {
+            const container = document.getElementById('recordsContainer');
+            container.innerHTML = '<div class="loading">Loading records...</div>';
+            
             try {
                 const response = await fetch('/api/records');
+                if (!response.ok) throw new Error('Failed to fetch records');
+                
                 const records = await response.json();
-                const container = document.getElementById('records');
                 
                 if (records.length === 0) {
-                    container.innerHTML = 'No records yet. Add your first record above!';
+                    container.innerHTML = '<div class="empty">No records yet. Add your first record above!</div>';
                     return;
                 }
                 
-                container.innerHTML = records.map(r => 
-                    \`<div class="record">
-                        <strong>\${r.name}</strong><br>
-                        \${r.email}<br>
-                        <small>Added: \${new Date(r.created_at).toLocaleString()}</small>
-                    </div>\`
-                ).join('');
+                const list = document.createElement('ul');
+                list.className = 'records-list';
+                
+                records.forEach(record => {
+                    const li = document.createElement('li');
+                    li.innerHTML = \`
+                        <div class="record-name">\${escapeHtml(record.name)}</div>
+                        <div class="record-email">\${escapeHtml(record.email)}</div>
+                    \`;
+                    list.appendChild(li);
+                });
+                
+                container.innerHTML = '';
+                container.appendChild(list);
             } catch (error) {
-                document.getElementById('records').innerHTML = 'Error loading records';
+                container.innerHTML = '<div class="error">Error loading records. Please refresh.</div>';
+                console.error('Error:', error);
             }
         }
-        
-        async function addRecord() {
-            const name = document.getElementById('name').value;
-            const email = document.getElementById('email').value;
-            const messageDiv = document.getElementById('message');
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+
+        document.getElementById('addBtn').addEventListener('click', async () => {
+            const nameInput = document.getElementById('nameInput');
+            const emailInput = document.getElementById('emailInput');
+            const messageDiv = document.getElementById('addMessage');
+            
+            const name = nameInput.value.trim();
+            const email = emailInput.value.trim();
             
             if (!name || !email) {
-                messageDiv.innerHTML = '<p style="color: red;">Please fill in both fields</p>';
+                messageDiv.innerHTML = '<div class="error">Please fill in both name and email.</div>';
                 return;
             }
+            
+            if (!email.includes('@') || !email.includes('.')) {
+                messageDiv.innerHTML = '<div class="error">Please enter a valid email address.</div>';
+                return;
+            }
+            
+            messageDiv.innerHTML = '<div class="loading">Adding record...</div>';
             
             try {
                 const response = await fetch('/api/records', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({name, email})
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email }),
                 });
                 
                 if (response.ok) {
-                    messageDiv.innerHTML = '<p style="color: green;">Record added successfully!</p>';
-                    document.getElementById('name').value = '';
-                    document.getElementById('email').value = '';
+                    messageDiv.innerHTML = '<div class="success">Record added successfully!</div>';
+                    nameInput.value = '';
+                    emailInput.value = '';
                     loadRecords();
-                    setTimeout(() => messageDiv.innerHTML = '', 3000);
+                    
+                    setTimeout(() => {
+                        messageDiv.innerHTML = '';
+                    }, 3000);
                 } else {
-                    messageDiv.innerHTML = '<p style="color: red;">Failed to add record</p>';
+                    const data = await response.json();
+                    messageDiv.innerHTML = \`<div class="error">Error: \${data.error || 'Failed to add record'}</div>\`;
                 }
             } catch (error) {
-                messageDiv.innerHTML = '<p style="color: red;">Network error</p>';
+                messageDiv.innerHTML = '<div class="error">Network error. Please try again.</div>';
+                console.error('Error:', error);
             }
-        }
-        
+        });
+
         loadRecords();
     </script>
 </body>
