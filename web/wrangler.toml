@@ -1,0 +1,22 @@
+name = "record-manager"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "records-db"
+database_id = "YOUR_DATABASE_ID_HERE"
+
+[assets]
+directory = "./"
+binding = "ASSETS"
+
+[env.production]
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "records-db"
+database_id = "YOUR_PROD_DATABASE_ID_HERE"
+
+[env.production.assets]
+directory = "./"
+binding = "ASSETS"
